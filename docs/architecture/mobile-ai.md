@@ -14,10 +14,15 @@ provider on. Answers are tagged *Experimental* in the assistant.
   of app backups, never bundled or committed (`*.gguf` is git-ignored).
 * `LlamaDartRuntime` keeps one engine loaded (context 6144 tokens, thinking disabled) and runs one
   turn at a time; it unloads when the app goes to the background or the provider is switched off.
-* `MobileLlamaProvider` offers `{chat, toolCalling}` with `experimental: true`. Tool calls are parsed
-  by llamadart from the model's chat template; calls with non-JSON arguments are dropped. The app's
-  orchestrator still runs every tool and validates evidence, exactly as for the Mac provider.
-  Proactive interpretation is not offered on-device.
+* `MobileLlamaProvider` offers `{chat, toolCalling, proactiveInterpretation}` with
+  `experimental: true`. Tool calls are parsed by llamadart from the model's chat template; calls with
+  non-JSON arguments are dropped. The app's orchestrator still runs every tool and validates evidence,
+  exactly as for the Mac provider.
+* Proactive interpretation ("AI 解读近况") uses the gateway's prompt (`proactive_prompt.dart`, kept
+  identical to `prompts.py` by a test) and grammar-constrained output from the bundled
+  `assets/schemas/ai-suggestion.v1.schema.json` (kept identical to `packages/api-contracts` by a
+  test), at most 3 suggestions. Records are trimmed to the newest ones until they fit ~9 000 chars.
+  The result goes through the same `CareSuggestionValidator` and evidence check as the Mac's.
 * Routing: `auto` uses the Mac first and falls back to the phone; `mobile` uses only the phone.
 
 ## Still to do before calling it stable
