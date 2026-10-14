@@ -1,0 +1,100 @@
+{
+  "tolerance": 1e-6,
+  "cases": [
+    {
+      "name": "empty",
+      "records": [],
+      "expected": {
+        "count": 0, "latest_grams": null, "first_grams": null, "previous_grams": null,
+        "change_since_previous_grams": null, "percent_change_since_previous": null,
+        "total_change_grams": null, "span_days": null, "avg_daily_change_grams": null,
+        "avg_weekly_change_grams": null, "max_grams": null, "max_at": null, "is_losing_weight": false
+      }
+    },
+    {
+      "name": "single_record",
+      "records": [{"id": "w1", "measured_at": "2026-01-01T00:00:00Z", "weight_grams": 10.0}],
+      "expected": {
+        "count": 1, "latest_grams": 10.0, "first_grams": 10.0, "previous_grams": null,
+        "change_since_previous_grams": null, "percent_change_since_previous": null,
+        "total_change_grams": null, "span_days": 0.0, "avg_daily_change_grams": null,
+        "avg_weekly_change_grams": null, "max_grams": 10.0, "max_at": "2026-01-01T00:00:00Z",
+        "is_losing_weight": false
+      }
+    },
+    {
+      "name": "steady_growth",
+      "records": [
+        {"id": "w1", "measured_at": "2026-01-01T00:00:00Z", "weight_grams": 10.0},
+        {"id": "w2", "measured_at": "2026-01-11T00:00:00Z", "weight_grams": 15.0},
+        {"id": "w3", "measured_at": "2026-01-31T00:00:00Z", "weight_grams": 25.0}
+      ],
+      "expected": {
+        "count": 3, "latest_grams": 25.0, "first_grams": 10.0, "previous_grams": 15.0,
+        "change_since_previous_grams": 10.0, "percent_change_since_previous": 66.66666666666667,
+        "total_change_grams": 15.0, "span_days": 30.0, "avg_daily_change_grams": 0.5,
+        "avg_weekly_change_grams": 3.5, "max_grams": 25.0, "max_at": "2026-01-31T00:00:00Z",
+        "is_losing_weight": false
+      }
+    },
+    {
+      "name": "weight_loss_after_peak",
+      "records": [
+        {"id": "w1", "measured_at": "2026-03-01T00:00:00Z", "weight_grams": 40.0},
+        {"id": "w2", "measured_at": "2026-03-15T00:00:00Z", "weight_grams": 42.0},
+        {"id": "w3", "measured_at": "2026-03-29T00:00:00Z", "weight_grams": 38.0}
+      ],
+      "expected": {
+        "count": 3, "latest_grams": 38.0, "first_grams": 40.0, "previous_grams": 42.0,
+        "change_since_previous_grams": -4.0, "percent_change_since_previous": -9.523809523809524,
+        "total_change_grams": -2.0, "span_days": 28.0, "avg_daily_change_grams": -0.07142857142857142,
+        "avg_weekly_change_grams": -0.5, "max_grams": 42.0, "max_at": "2026-03-15T00:00:00Z",
+        "is_losing_weight": true
+      }
+    },
+    {
+      "name": "unsorted_with_offsets",
+      "records": [
+        {"id": "w3", "measured_at": "2026-01-31T07:00:00+07:00", "weight_grams": 25.0},
+        {"id": "w1", "measured_at": "2026-01-01T00:00:00Z", "weight_grams": 10.0},
+        {"id": "w2", "measured_at": "2026-01-10T12:00:00-12:00", "weight_grams": 15.0}
+      ],
+      "expected": {
+        "count": 3, "latest_grams": 25.0, "first_grams": 10.0, "previous_grams": 15.0,
+        "change_since_previous_grams": 10.0, "percent_change_since_previous": 66.66666666666667,
+        "total_change_grams": 15.0, "span_days": 30.0, "avg_daily_change_grams": 0.5,
+        "avg_weekly_change_grams": 3.5, "max_grams": 25.0, "max_at": "2026-01-31T00:00:00Z",
+        "is_losing_weight": false
+      }
+    },
+    {
+      "name": "short_span_no_rate",
+      "records": [
+        {"id": "w1", "measured_at": "2026-05-01T08:00:00Z", "weight_grams": 30.0},
+        {"id": "w2", "measured_at": "2026-05-01T20:00:00Z", "weight_grams": 30.5}
+      ],
+      "expected": {
+        "count": 2, "latest_grams": 30.5, "first_grams": 30.0, "previous_grams": 30.0,
+        "change_since_previous_grams": 0.5, "percent_change_since_previous": 1.6666666666666667,
+        "total_change_grams": 0.5, "span_days": 0.5, "avg_daily_change_grams": null,
+        "avg_weekly_change_grams": null, "max_grams": 30.5, "max_at": "2026-05-01T20:00:00Z",
+        "is_losing_weight": false
+      }
+    },
+    {
+      "name": "tie_on_max_earliest_wins",
+      "records": [
+        {"id": "w1", "measured_at": "2026-02-01T00:00:00Z", "weight_grams": 20.0},
+        {"id": "w2", "measured_at": "2026-02-08T00:00:00Z", "weight_grams": 22.0},
+        {"id": "w3", "measured_at": "2026-02-15T00:00:00Z", "weight_grams": 22.0}
+      ],
+      "expected": {
+        "count": 3, "latest_grams": 22.0, "first_grams": 20.0, "previous_grams": 22.0,
+        "change_since_previous_grams": 0.0, "percent_change_since_previous": 0.0,
+        "total_change_grams": 2.0, "span_days": 14.0, "avg_daily_change_grams": 0.14285714285714285,
+        "avg_weekly_change_grams": 1.0, "max_grams": 22.0, "max_at": "2026-02-08T00:00:00Z",
+        "is_losing_weight": false
+      }
+    }
+  ]
+}

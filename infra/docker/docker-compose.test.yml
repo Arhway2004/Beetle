@@ -1,0 +1,12 @@
+# Disposable PostgreSQL for running database/ and services/api tests locally:
+#   docker compose -f infra/docker/docker-compose.test.yml up -d
+#   TEST_DATABASE_ADMIN_URL=postgresql://postgres:postgres@127.0.0.1:55432/postgres make db-test api-test
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "127.0.0.1:55432:5432"
+    tmpfs:
+      - /var/lib/postgresql/data

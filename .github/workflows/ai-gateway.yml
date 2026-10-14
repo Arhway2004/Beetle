@@ -1,0 +1,21 @@
+name: ai-gateway
+on:
+  push:
+    branches: [main]
+    paths: ["services/ai-gateway/**", "packages/shared-types/**", "packages/api-contracts/**", ".github/workflows/ai-gateway.yml"]
+  pull_request:
+    paths: ["services/ai-gateway/**", "packages/shared-types/**", "packages/api-contracts/**", ".github/workflows/ai-gateway.yml"]
+concurrency: { group: "gateway-${{ github.ref }}", cancel-in-progress: true }
+defaults:
+  run:
+    working-directory: services/ai-gateway
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --python 3.13 --frozen
+      - run: uv run ruff check . && uv run ruff format --check .
+      # Ollama is mocked; no model is downloaded in CI.
+      - run: uv run pytest -q

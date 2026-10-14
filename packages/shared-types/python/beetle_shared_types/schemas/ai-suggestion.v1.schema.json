@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://beetle-keeper.local/schemas/ai-suggestion.v1.schema.json",
+  "title": "AiCareSuggestion",
+  "description": "A structured, evidence-backed care suggestion produced by the proactive care system. Suggestions are proposals only: they never create or modify records and always require explicit user confirmation before any reminder is scheduled.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "beetle_id",
+    "event_type",
+    "severity",
+    "confidence",
+    "evidence_record_ids",
+    "reason",
+    "recommendation",
+    "suggested_reminder",
+    "requires_user_confirmation"
+  ],
+  "properties": {
+    "beetle_id": {
+      "description": "Human-readable beetle code, e.g. CCK-001. Null when the suggestion is not tied to one beetle (e.g. a temperature sensor).",
+      "type": ["string", "null"],
+      "pattern": "^[A-Z][A-Z0-9]{1,7}-[0-9]{3,6}$"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "significant_weight_change",
+        "weight_loss",
+        "measurement_overdue",
+        "substrate_inspection",
+        "container_review",
+        "temperature_out_of_range",
+        "possible_prepupa",
+        "possible_pupation",
+        "expected_emergence_window",
+        "outdated_reminder",
+        "general_observation"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["info", "observation", "warning", "alert"]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["low", "medium", "high"]
+    },
+    "basis": {
+      "description": "What the suggestion is grounded in. 'measured' = a recorded value crossed a user-configured threshold; 'calculated' = deterministic computation over records; 'ai_inference' = language-model interpretation (a hypothesis).",
+      "type": "string",
+      "enum": ["measured", "calculated", "ai_inference"]
+    },
+    "evidence_record_ids": {
+      "description": "IDs of the stored records this suggestion is based on. At least one is required: suggestions without evidence are rejected.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+    },
+    "reason": { "type": "string", "minLength": 1, "maxLength": 1000 },
+    "recommendation": { "type": "string", "minLength": 1, "maxLength": 1000 },
+    "suggested_reminder": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "delay_days", "title", "message"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "delay_days": { "type": "integer", "minimum": 0, "maximum": 365 },
+            "title": { "type": "string", "minLength": 1, "maxLength": 80 },
+            "message": { "type": "string", "minLength": 1, "maxLength": 500 }
+          }
+        }
+      ]
+    },
+    "requires_user_confirmation": {
+      "description": "Must always be true. Any suggestion claiming it can bypass confirmation is rejected.",
+      "const": true
+    }
+  }
+}

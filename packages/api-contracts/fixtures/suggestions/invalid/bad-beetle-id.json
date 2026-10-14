@@ -1,0 +1,18 @@
+{
+  "beetle_id": "cck 1",
+  "event_type": "possible_prepupa",
+  "severity": "observation",
+  "confidence": "low",
+  "evidence_record_ids": [
+    "OBS-012"
+  ],
+  "reason": "Recent observations indicate color changes, but evidence is insufficient to confirm prepupation.",
+  "recommendation": "Observe externally without disturbing a possible pupal chamber.",
+  "suggested_reminder": {
+    "enabled": true,
+    "delay_days": 3,
+    "title": "观察 CCK-001 状态",
+    "message": "检查外部可观察的变化，避免不必要的翻动。"
+  },
+  "requires_user_confirmation": true
+}

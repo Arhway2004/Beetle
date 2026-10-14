@@ -1,0 +1,48 @@
+# Local backend stack: PostgreSQL + one-shot migrations + API.
+# The Flutter app and the Mac AI Gateway run natively, outside Docker.
+#   cp .env.example .env   # then edit secrets
+#   make up
+name: beetle-keeper
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-beetle}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-beetle_keeper}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: database/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-beetle}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-beetle_keeper}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-beetle}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-beetle_keeper}
+      API_CORS_ORIGINS: ${API_CORS_ORIGINS:-}
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:

@@ -1,0 +1,12 @@
+{
+  "beetle_id": "DHH-002",
+  "event_type": "weight_loss",
+  "severity": "warning",
+  "confidence": "medium",
+  "basis": "calculated",
+  "evidence_record_ids": ["3f0f6a3e-6d0b-4c1e-9a43-1d7a3f0b2c11", "a1b2c3d4-0000-4000-8000-000000000002"],
+  "reason": "Recorded weight decreased 9.5% between the last two measurements.",
+  "recommendation": "Re-check weight in one week and review substrate condition.",
+  "suggested_reminder": null,
+  "requires_user_confirmation": true
+}

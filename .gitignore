@@ -1,0 +1,79 @@
+# ---- Secrets & local environment ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+*.keystore
+key.properties
+**/secrets/
+infra/tls/
+
+# ---- Databases ----
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+pgdata/
+.pgdata/
+
+# ---- Downloaded AI models ----
+# (only model download dirs, not source folders named 'models')
+/models/
+/ai-models/
+apps/mobile/assets/ai-models/
+services/ai-gateway/ai-models/
+*.gguf
+*.safetensors
+*.bin
+.ollama/
+
+# ---- Python ----
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+*.egg-info/
+
+# ---- Flutter / Dart ----
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/build/
+**/coverage/
+**/.pub-cache/
+**/.pub/
+*.iml
+.idea/
+apps/mobile/android/local.properties
+apps/mobile/android/.gradle/
+apps/mobile/android/app/release/
+apps/mobile/ios/Pods/
+apps/mobile/ios/.symlinks/
+apps/mobile/ios/Flutter/Generated.xcconfig
+apps/mobile/ios/Flutter/flutter_export_environment.sh
+apps/mobile/ios/Flutter/ephemeral/
+apps/mobile/ios/Runner/GeneratedPluginRegistrant.*
+xcuserdata/
+
+# ---- Node ----
+node_modules/
+
+# ---- OS / editors ----
+.DS_Store
+*.swp
+.vscode/*
+!.vscode/extensions.json
+
+# ---- Backups exported from the app ----
+*.bkbackup.zip

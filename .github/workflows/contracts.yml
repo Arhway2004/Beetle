@@ -1,0 +1,22 @@
+name: contracts
+on:
+  push:
+    branches: [main]
+    paths: ["packages/**", ".github/workflows/contracts.yml"]
+  pull_request:
+    paths: ["packages/**", ".github/workflows/contracts.yml"]
+concurrency: { group: "contracts-${{ github.ref }}", cancel-in-progress: true }
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - name: OpenAPI, JSON Schemas, fixtures
+        working-directory: packages/api-contracts
+        run: uv sync --python 3.13 --frozen && uv run pytest -q
+      - name: Generated shared types are up to date
+        run: packages/shared-types/generate.sh && git diff --exit-code -- packages/shared-types
+      - name: Shared types tests
+        working-directory: packages/shared-types
+        run: uv sync --python 3.13 --frozen && uv run ruff check . && uv run pytest -q

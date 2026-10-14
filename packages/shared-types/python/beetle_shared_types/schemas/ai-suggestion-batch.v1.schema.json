@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://beetle-keeper.local/schemas/ai-suggestion-batch.v1.schema.json",
+  "title": "AiCareSuggestionBatch",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "suggestions"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "suggestions": {
+      "type": "array",
+      "maxItems": 10,
+      "items": { "$ref": "ai-suggestion.v1.schema.json" }
+    }
+  }
+}

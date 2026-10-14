@@ -1,0 +1,19 @@
+[project]
+name = "beetle-api-contracts"
+version = "1.0.0"
+description = "OpenAPI specifications, JSON Schemas and shared test vectors (validation only)"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=8.3", "openapi-spec-validator>=0.7", "jsonschema>=4.23", "pyyaml>=6", "ruff>=0.8"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

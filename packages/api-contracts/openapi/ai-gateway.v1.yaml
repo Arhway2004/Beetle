@@ -1,0 +1,170 @@
+openapi: 3.1.0
+info:
+  title: Beetle Keeper AI Gateway
+  version: 1.0.0
+  description: |
+    Runs on the keeper's own Mac in front of a localhost-only Ollama.
+
+    * All `/api/v1` endpoints require `Authorization: Bearer <GATEWAY_TOKEN>`.
+    * Serve over HTTPS (self-signed certificates must be pinned by SHA-256 fingerprint in the app).
+    * The gateway is stateless and has no database access. Tool calls requested by the model are
+      returned to the app, which executes its own read-only tools and sends the results back.
+    * Proactive suggestions are validated against `schemas/ai-suggestion.v1.schema.json`; invalid
+      items are dropped, never repaired. Every suggestion requires user confirmation in the app.
+servers:
+  - url: https://my-mac.local:8443
+security:
+  - bearer: []
+paths:
+  /api/v1/health:
+    get:
+      summary: Gateway and Ollama status
+      responses:
+        "200":
+          description: Status (degraded when Ollama is down or the default model is not pulled)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/v1/capabilities:
+    get:
+      summary: What this gateway can do
+      responses:
+        "200":
+          description: Capabilities
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Capabilities" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/v1/chat:
+    post:
+      summary: One model turn (non-streaming). Returns text or tool-call requests.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChatRequest" }
+      responses:
+        "200":
+          description: Assistant message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatResponse" }
+        "400": { description: "Model not allowed" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "413": { description: "Request too large" }
+        "422": { description: "Invalid request (unknown fields are rejected)" }
+        "429": { description: "Rate limited" }
+        "502": { description: "Model returned an unusable response" }
+        "503": { description: "Ollama not running or model not pulled" }
+        "504": { description: "Ollama timed out" }
+  /api/v1/proactive/interpret:
+    post:
+      summary: Ask the model for structured, evidence-backed care suggestions for one beetle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [context]
+              properties:
+                model: { type: string }
+                context:
+                  type: object
+                  description: Records of one beetle as prepared by the app (every record carries its id).
+      responses:
+        "200":
+          description: Only schema-valid suggestions
+          headers:
+            X-Rejected-Suggestions:
+              description: Number of model outputs dropped by validation
+              schema: { type: integer }
+          content:
+            application/json:
+              schema: { $ref: "../schemas/ai-suggestion-batch.v1.schema.json" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "502": { description: "Model did not return JSON after one retry" }
+        "503": { description: "Ollama not running or model not pulled" }
+        "504": { description: "Ollama timed out" }
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+  responses:
+    Unauthorized:
+      description: Missing or invalid token
+  schemas:
+    Health:
+      type: object
+      required: [status, ollama_reachable, models, default_model]
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        ollama_reachable: { type: boolean }
+        models: { type: array, items: { type: string } }
+        default_model: { type: string }
+    Capabilities:
+      type: object
+      required: [chat, tool_calling, proactive_interpretation, vision, default_model, allowed_models]
+      properties:
+        chat: { type: boolean }
+        tool_calling: { type: boolean }
+        proactive_interpretation: { type: boolean }
+        vision: { type: boolean, description: Always false until a validated multimodal model is integrated }
+        default_model: { type: string }
+        allowed_models: { type: array, items: { type: string } }
+    ToolCall:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        id: { type: string, maxLength: 64 }
+        name: { type: string, pattern: "^[a-z_][a-z0-9_]*$" }
+        arguments: { type: object }
+    ChatMessage:
+      type: object
+      additionalProperties: false
+      required: [role]
+      properties:
+        role: { type: string, enum: [system, user, assistant, tool] }
+        content: { type: string, maxLength: 60000 }
+        tool_calls: { type: array, maxItems: 10, items: { $ref: "#/components/schemas/ToolCall" } }
+        tool_name: { type: string }
+    ToolDefinition:
+      type: object
+      additionalProperties: false
+      required: [function]
+      properties:
+        type: { type: string, enum: [function] }
+        function:
+          type: object
+          required: [name]
+          properties:
+            name: { type: string }
+            description: { type: string }
+            parameters: { type: object, description: JSON Schema of the arguments }
+    ChatRequest:
+      type: object
+      additionalProperties: false
+      required: [messages]
+      properties:
+        model: { type: string }
+        messages: { type: array, minItems: 1, maxItems: 80, items: { $ref: "#/components/schemas/ChatMessage" } }
+        tools: { type: array, maxItems: 24, items: { $ref: "#/components/schemas/ToolDefinition" } }
+    ChatResponse:
+      type: object
+      required: [model, message]
+      properties:
+        model: { type: string }
+        done_reason: { type: [string, "null"] }
+        message:
+          type: object
+          required: [role, content, tool_calls]
+          properties:
+            role: { type: string, enum: [assistant] }
+            content:
+              type: string
+              description: "Labeled lines ([VERIFIED], [CALCULATED], ...); <think> blocks removed"
+            tool_calls: { type: array, items: { $ref: "#/components/schemas/ToolCall" } }

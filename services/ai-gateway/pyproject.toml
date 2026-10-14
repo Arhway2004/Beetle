@@ -1,0 +1,43 @@
+[project]
+name = "beetle-ai-gateway"
+version = "1.0.0"
+description = "Authenticated gateway between Beetle Keeper and a local Ollama on the user's Mac"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.32,<1",
+  "httpx>=0.27,<1",
+  "pydantic>=2.9,<3",
+  "pydantic-settings>=2.6,<3",
+  "beetle-shared-types",
+]
+
+[project.scripts]
+beetle-ai-gateway = "ai_gateway.__main__:main"
+
+[dependency-groups]
+dev = ["pytest>=8.3", "ruff>=0.8", "pyyaml>=6"]
+
+[tool.uv.sources]
+beetle-shared-types = { path = "../../packages/shared-types", editable = true }
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_gateway"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "ASYNC"]
+ignore = ["S101", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106"]  # fake tokens in tests
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

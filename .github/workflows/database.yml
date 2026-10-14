@@ -1,0 +1,35 @@
+name: database
+on:
+  push:
+    branches: [main]
+    paths: ["database/**", "apps/mobile/lib/data/database/app_database.dart", ".github/workflows/database.yml"]
+  pull_request:
+    paths: ["database/**", "apps/mobile/lib/data/database/app_database.dart", ".github/workflows/database.yml"]
+concurrency: { group: "database-${{ github.ref }}", cancel-in-progress: true }
+defaults:
+  run:
+    working-directory: database
+jobs:
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_PASSWORD: postgres }
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    env:
+      TEST_DATABASE_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --python 3.13 --frozen
+      - run: uv run ruff check .
+      - run: uv run pytest -q
+      - name: Applied migrations are never edited
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          if git diff --name-only --diff-filter=MD "origin/${{ github.base_ref }}" -- migrations/ | grep .; then
+            echo "Existing migrations must not be modified or deleted; add a new V00N file." >&2; exit 1
+          fi

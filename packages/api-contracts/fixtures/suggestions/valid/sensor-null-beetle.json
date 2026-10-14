@@ -1,0 +1,12 @@
+{
+  "beetle_id": null,
+  "event_type": "temperature_out_of_range",
+  "severity": "alert",
+  "confidence": "high",
+  "basis": "measured",
+  "evidence_record_ids": ["TMP-0042"],
+  "reason": "Measured 29.5°C exceeds the user-configured maximum of 26.0°C.",
+  "recommendation": "Check the room and container temperature.",
+  "suggested_reminder": {"enabled": true, "delay_days": 0, "title": "检查温度", "message": "温度超出设定上限。"},
+  "requires_user_confirmation": true
+}

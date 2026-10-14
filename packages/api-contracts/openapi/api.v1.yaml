@@ -1,0 +1,292 @@
+openapi: 3.1.0
+info:
+  title: Beetle Keeper API
+  version: 1.0.0
+  description: |
+    Backend for server-side persistence and validation. The mobile app is offline-first and
+    works without this service.
+
+    Conventions
+    * Versioned under `/api/v1`. Breaking changes require `/api/v2`.
+    * IDs are client-generated UUIDs (stable across devices); human codes like `DHH-001` are unique.
+    * All timestamps are RFC 3339 with an offset; stored as UTC.
+    * History records are append-only. `DELETE` writes a tombstone (`deleted_at`).
+    * Updates send the last-seen `revision`; a mismatch returns `409 Conflict` (no silent overwrite).
+    * Synchronization endpoints are designed (docs/architecture/adr/0004-offline-sync.md) but not implemented.
+servers:
+  - url: http://localhost:8000
+paths:
+  /api/v1/health:
+    get:
+      summary: Service and database status
+      responses:
+        "200":
+          description: Status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+  /api/v1/species:
+    get:
+      summary: List species
+      responses:
+        "200":
+          description: Species
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Species" } }
+    post:
+      summary: Create a custom species
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SpeciesIn" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Species" }
+        "409": { description: "Code or id already exists" }
+        "422": { description: "Validation error" }
+  /api/v1/beetles:
+    get:
+      summary: List beetles
+      parameters:
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/Status" } }
+        - { name: species_code, in: query, schema: { type: string } }
+        - { name: include_deleted, in: query, schema: { type: boolean, default: false } }
+      responses:
+        "200":
+          description: Beetles
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/Beetle" } }
+    post:
+      summary: Create a beetle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BeetleIn" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Beetle" }
+        "409": { description: "Code or id already exists" }
+        "422": { description: "Validation error (including code not matching species)" }
+  /api/v1/beetles/{beetle_id}:
+    parameters:
+      - { name: beetle_id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Get a beetle
+      responses:
+        "200":
+          description: Beetle
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Beetle" }
+        "404": { description: "Not found or tombstoned" }
+    patch:
+      summary: Update profile fields (optimistic concurrency)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BeetlePatch" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Beetle" }
+        "404": { description: "Not found" }
+        "409": { description: "Revision mismatch" }
+    delete:
+      summary: Tombstone a beetle
+      responses:
+        "204": { description: "Deleted (tombstoned)" }
+        "404": { description: "Not found" }
+  /api/v1/beetles/{beetle_id}/weights:
+    parameters:
+      - { name: beetle_id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Weight history (oldest first)
+      responses:
+        "200":
+          description: Weight records
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/WeightRecord" } }
+        "404": { description: "Beetle not found" }
+    post:
+      summary: Append a weight measurement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WeightIn" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WeightRecord" }
+        "404": { description: "Beetle not found" }
+        "409": { description: "Id already exists" }
+        "422": { description: "Validation error (non-positive, naive or future timestamp)" }
+  /api/v1/beetles/{beetle_id}/weights/{record_id}:
+    parameters:
+      - { name: beetle_id, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: record_id, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      summary: Tombstone a weight record
+      responses:
+        "204": { description: "Deleted (tombstoned)" }
+        "404": { description: "Not found" }
+  /api/v1/beetles/{beetle_id}/growth-metrics:
+    parameters:
+      - { name: beetle_id, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: since_days, in: query, schema: { type: integer, minimum: 1, maximum: 3650 } }
+    get:
+      summary: Deterministic growth metrics (semantics in fixtures/growth/README.md)
+      responses:
+        "200":
+          description: Metrics
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GrowthMetrics" }
+        "404": { description: "Beetle not found" }
+  /api/v1/ai/suggestions/validate:
+    post:
+      summary: Validate an AI care suggestion (schema + business rules). Creates nothing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "../schemas/ai-suggestion.v1.schema.json" }
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SuggestionValidation" }
+components:
+  schemas:
+    Status: { type: string, enum: [active, deceased, transferred, archived] }
+    Sex: { type: string, enum: [male, female, unknown] }
+    SyncFields:
+      type: object
+      required: [created_at, updated_at, deleted_at, revision]
+      properties:
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        deleted_at: { type: [string, "null"], format: date-time }
+        revision: { type: integer }
+    Health:
+      type: object
+      required: [status, database, schema_version]
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        database: { type: boolean }
+        schema_version: { type: [integer, "null"] }
+    SpeciesIn:
+      type: object
+      additionalProperties: false
+      required: [code, scientific_name]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string, pattern: "^[A-Z][A-Z0-9]{1,7}$" }
+        scientific_name: { type: string, maxLength: 120 }
+        common_name: { type: [string, "null"] }
+        expected_pupa_days_min: { type: [integer, "null"], minimum: 1 }
+        expected_pupa_days_max: { type: [integer, "null"], minimum: 1 }
+    Species:
+      allOf:
+        - $ref: "#/components/schemas/SyncFields"
+        - type: object
+          required: [id, code, scientific_name, is_builtin]
+          properties:
+            id: { type: string, format: uuid }
+            code: { type: string }
+            scientific_name: { type: string }
+            common_name: { type: [string, "null"] }
+            is_builtin: { type: boolean }
+            expected_pupa_days_min: { type: [integer, "null"] }
+            expected_pupa_days_max: { type: [integer, "null"] }
+    BeetleIn:
+      type: object
+      additionalProperties: false
+      required: [code, species_id]
+      properties:
+        id: { type: string, format: uuid, description: Client-generated stable id }
+        code: { type: string, pattern: "^[A-Z][A-Z0-9]{1,7}-[0-9]{3,6}$" }
+        species_id: { type: string, format: uuid }
+        sex: { $ref: "#/components/schemas/Sex" }
+        status: { $ref: "#/components/schemas/Status" }
+        acquired_at: { type: [string, "null"], format: date-time }
+        hatch_date: { type: [string, "null"], format: date-time }
+        estimated_hatch_date: { type: [string, "null"], format: date-time }
+        hatch_uncertainty_days: { type: [integer, "null"], minimum: 0 }
+        sire_id: { type: [string, "null"], format: uuid, description: Father, if it is a beetle in the collection }
+        dam_id: { type: [string, "null"], format: uuid, description: Mother, if it is a beetle in the collection }
+        sire_note: { type: [string, "null"], maxLength: 200, description: "Father kept elsewhere, e.g. WD 125 mm" }
+        dam_note: { type: [string, "null"], maxLength: 200, description: Mother kept elsewhere }
+        notes: { type: [string, "null"] }
+    BeetlePatch:
+      type: object
+      additionalProperties: false
+      required: [revision]
+      properties:
+        revision: { type: integer }
+        sex: { $ref: "#/components/schemas/Sex" }
+        status: { $ref: "#/components/schemas/Status" }
+        acquired_at: { type: [string, "null"], format: date-time }
+        hatch_date: { type: [string, "null"], format: date-time }
+        estimated_hatch_date: { type: [string, "null"], format: date-time }
+        hatch_uncertainty_days: { type: [integer, "null"], minimum: 0 }
+        sire_id: { type: [string, "null"], format: uuid, description: Father, if it is a beetle in the collection }
+        dam_id: { type: [string, "null"], format: uuid, description: Mother, if it is a beetle in the collection }
+        sire_note: { type: [string, "null"], maxLength: 200, description: "Father kept elsewhere, e.g. WD 125 mm" }
+        dam_note: { type: [string, "null"], maxLength: 200, description: Mother kept elsewhere }
+        notes: { type: [string, "null"] }
+    Beetle:
+      allOf:
+        - $ref: "#/components/schemas/SyncFields"
+        - $ref: "#/components/schemas/BeetleIn"
+    WeightIn:
+      type: object
+      additionalProperties: false
+      required: [measured_at, weight_grams]
+      properties:
+        id: { type: string, format: uuid }
+        measured_at: { type: string, format: date-time }
+        weight_grams: { type: number, exclusiveMinimum: 0, exclusiveMaximum: 1000 }
+        notes: { type: [string, "null"] }
+    WeightRecord:
+      allOf:
+        - $ref: "#/components/schemas/SyncFields"
+        - $ref: "#/components/schemas/WeightIn"
+        - type: object
+          required: [beetle_id]
+          properties:
+            beetle_id: { type: string, format: uuid }
+    GrowthMetrics:
+      type: object
+      required: [beetle_id, window_days, metrics]
+      properties:
+        beetle_id: { type: string, format: uuid }
+        window_days: { type: [integer, "null"] }
+        metrics:
+          type: object
+          description: See packages/api-contracts/fixtures/growth/README.md
+    SuggestionValidation:
+      type: object
+      required: [valid, schema_errors, business_errors, requires_user_confirmation]
+      properties:
+        valid: { type: boolean }
+        schema_errors: { type: array, items: { type: string } }
+        business_errors: { type: array, items: { type: string } }
+        requires_user_confirmation: { const: true }
