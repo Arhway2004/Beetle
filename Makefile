@@ -29,7 +29,7 @@ changed: ## List components changed vs origin/main
 	@infra/scripts/changed-components.sh
 
 # ---------------------------------------------------------------- mobile (Flutter)
-.PHONY: mobile-get mobile-gen mobile-test mobile-lint mobile-run mobile-apk mobile-ios
+.PHONY: mobile-get mobile-gen mobile-test mobile-lint mobile-run mobile-apk mobile-ios mobile-iphone
 mobile-get: ## Fetch Flutter dependencies
 	cd $(MOBILE) && flutter pub get
 mobile-gen: ## Regenerate Drift code and localizations
@@ -44,6 +44,11 @@ mobile-apk: ## Build Android release APK
 	cd $(MOBILE) && flutter build apk --release
 mobile-ios: ## Build iOS (no codesign; signing needs an Apple team)
 	cd $(MOBILE) && flutter build ios --release --no-codesign
+mobile-iphone: ## Build release, install and launch on IPHONE=<devicectl id> (works when `flutter run` cannot install)
+	@test -n "$(IPHONE)" || { echo "set IPHONE=<id from: xcrun devicectl list devices>"; exit 1; }
+	cd $(MOBILE) && flutter build ios --release
+	xcrun devicectl device install app --device $(IPHONE) $(MOBILE)/build/ios/iphoneos/Runner.app
+	xcrun devicectl device process launch --terminate-existing --device $(IPHONE) com.beetlekeeper.beetleKeeper
 mobile-schema: ## Snapshot Drift schema after bumping schemaVersion
 	cd $(MOBILE) && dart run drift_dev make-migrations
 
