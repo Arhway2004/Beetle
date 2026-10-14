@@ -77,3 +77,4 @@ node_modules/
 
 # ---- Backups exported from the app ----
 *.bkbackup.zip
+.claude/settings.local.json
